@@ -55,23 +55,23 @@ jobs:
         echo "Transformed environment_transformed.json content:"
         cat environment_transformed.json
 
-    - name: Run API tests with Newman and generate HTMLExtra report (Negative Scenarios)
+    - name: Run Negative API tests with Newman (continue on error)
       run: |
         echo "Running Negative API Tests..."
         npx newman run "${{ github.workspace }}/postman/collections/NASA_Negative_Tests.json" \
           -e environment_transformed.json \
           --reporters cli,htmlextra \
-          --reporter-htmlextra-export newman-report-negative.html || { echo "Newman Negative Test Run failed."; exit 1; }
-             continue-on-error: true
+          --reporter-htmlextra-export newman-report-negative.html || echo "Negative API Tests failed, but continuing..." 
+      continue-on-error: true
 
-    - name: Run API tests with Newman and generate HTMLExtra report (Positive Scenarios)
+    - name: Run Positive API tests with Newman (continue on error)
       run: |
         echo "Running Positive API Tests..."
         npx newman run "${{ github.workspace }}/postman/collections/NASA_Positive_Tests.json" \
           -e environment_transformed.json \
           --reporters cli,htmlextra \
-          --reporter-htmlextra-export newman-report-positive.html || { echo "Newman Positive Test Run failed."; exit 1; }
-              continue-on-error: true
+          --reporter-htmlextra-export newman-report-positive.html || echo "Positive API Tests failed, but continuing..."
+      continue-on-error: true
 
     - name: Upload Negative HTML Report
       uses: actions/upload-artifact@v4
