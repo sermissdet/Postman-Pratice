@@ -1,99 +1,87 @@
 name: CI
 
 on:
- push:
- branches: [ "main" ]
- pull_request:
- branches: [ "main" ]
- workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  POSTMAN_API_KEY: ${{ secrets.NASA_API_KEY }}
 
 jobs:
- build:
- runs-on: ubuntu-latest
- steps:
- - uses: actions/checkout@v4
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
 
- - name: Set up Node.js
- uses: actions/setup-node@v4
- with:
- node-version: '22' 
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.x'
 
- - name: Install Newman and HTML Extra Reporter
- run: |
- npm install -g newman
- npm install -g newman-reporter-htmlextra
+    - name: Cache npm dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
 
- - name: Fetch Postman Environment
- 
- run: |
- echo "Attempting to fetch environment with ID: df967d1f-7ccb-47c4-94b4-f03eb8f599dd"
- curl -X GET "https://api.getpostman.com/environments/df967d1f-7ccb-47c4-94b4-f03eb8f599dd" \
- -H "X-Api-Key: ${{ secrets.NASA_API_KEY }}" \
- -o environment.json
- # Curl'ün çıkış kodunu kontrol edelim
- if [ $? -ne 0 ]; then
- echo "Error: Curl command failed."
- exit 1
- fi
- echo "Environment file fetched to environment.json."
- 
- - name: Debug - Orijinal Environment Dosyasının İçeriğini Göster
- 
- run: |
- echo "environment.json içeriği:"
- cat environment.json
- echo "environment.json dosya boyutu:"
- du -b environment.json
+    - name: Install Newman and HTML Extra Reporter
+      run: npm install newman newman-reporter-htmlextra
 
- - name: Transform Environment File
- 
- run: |
- # JQ ile dönüşümü yaparız. Eğer jq başarısız olursa (örn. input geçerli JSON değilse),
- # stderr'e yazar ve bu komutu başarısız yapar.
- jq '.environment' environment.json > environment_transformed.json
- # Önemli: jq dönüşümü başarısız olursa, bir sonraki adımlar da başarısız olur.
- # environment.json'ın geçerli bir Postman API yanıtı olduğundan emin olun.
- 
- - name: Debug - Transformed Environment Dosyasının İçeriğini Göster
- 
- run: |
- echo "environment_transformed.json içeriği:"
- cat environment_transformed.json
- echo "environment_transformed.json dosya boyutu:"
- du -b environment_transformed.json
+    - name: Fetch Postman Environment
+      run: |
+        echo "Attempting to fetch environment with ID: df967d1f-7ccb-47c4-94b4-f03eb8f599dd"
+        curl -X GET "https://api.getpostman.com/environments/df967d1f-7ccb-47c4-94b4-f03eb8f599dd" \
+          -H "X-Api-Key: $POSTMAN_API_KEY" \
+          -o environment.json || { echo "Error: Curl command failed."; exit 1; }
+        echo "Environment file fetched to environment.json."
 
- - name: Install Postman CLI 
- run: |
- curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
+    - name: Transform Environment File
+      run: |
+        jq '.environment' environment.json > environment_transformed.json || { echo "Error: jq transformation failed."; exit 1; }
 
- - name: Login to Postman CLI 
- run: postman login --with-api-key ${{ secrets.NASA_API_KEY }}
+    - name: Debug - Show Environment Files
+      run: |
+        echo "Original environment.json content:"
+        cat environment.json
+        echo "Transformed environment_transformed.json content:"
+        cat environment_transformed.json
 
- - name: Run API tests with Newman and generate HTMLExtra report (Negative Scenarios)
- run: |
- echo "Running Negative API Tests..."
- newman run "${{ github.workspace }}/postman/collections/NASA_Negative_Tests.json" \
- -e environment_transformed.json \
- --reporters cli,htmlextra \
- --reporter-htmlextra-export newman-report-negative.html
- 
- continue-on-error: true 
+    - name: Install Postman CLI
+      run: npm install -g postman-cli
 
- - name: Run API tests with Newman and generate HTMLExtra report (Positive)
- 
- run: |
- newman run "${{ github.workspace }}/postman/collections/NASA_Positive_Tests.json" -e environment_transformed.json --reporters cli,htmlextra --reporter-htmlextra-export newman-report-positive.html
- continue-on-error: true 
- - name: Upload Negative HTML Report
- 
- uses: actions/upload-artifact@v4
- with:
- name: newman-report-negative
- path: newman-report-negative.html
+    - name: Login to Postman CLI
+      run: postman login --with-api-key $POSTMAN_API_KEY
 
- - name: Upload Positive HTML Report
- 
- uses: actions/upload-artifact@v4
- with:
- name: newman-report-positive
- path: newman-report-positive.html
+    - name: Run API tests with Newman and generate HTMLExtra report (Negative Scenarios)
+      run: |
+        echo "Running Negative API Tests..."
+        npx newman run "${{ github.workspace }}/postman/collections/NASA_Negative_Tests.json" \
+          -e environment_transformed.json \
+          --reporters cli,htmlextra \
+          --reporter-htmlextra-export newman-report-negative.html
+
+    - name: Run API tests with Newman and generate HTMLExtra report (Positive Scenarios)
+      run: |
+        npx newman run "${{ github.workspace }}/postman/collections/NASA_Positive_Tests.json" \
+          -e environment_transformed.json \
+          --reporters cli,htmlextra \
+          --reporter-htmlextra-export newman-report-positive.html
+
+    - name: Upload Negative HTML Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: newman-report-negative
+        path: newman-report-negative.html
+        retention-days: 7
+
+    - name: Upload Positive HTML Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: newman-report-positive
+        path: newman-report-positive.html
+        retention-days: 7
