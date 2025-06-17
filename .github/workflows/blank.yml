@@ -37,12 +37,16 @@ jobs:
         echo "Attempting to fetch environment with ID: d7e1bfa4-5b18-44e6-982b-5834b6f78241"
         curl -X GET "https://api.getpostman.com/environments/d7e1bfa4-5b18-44e6-982b-5834b6f78241" \
           -H "X-Api-Key: $POSTMAN_API_KEY" \
-          -o environment.json || { echo "Error: Curl command failed."; exit 1; }
+          -o environment.json || { echo "Error: Curl command failed. Ensure your Postman API Key is correct."; exit 1; }
         echo "Environment file fetched to environment.json."
 
     - name: Transform Environment File
       run: |
-        jq '.environment' environment.json > environment_transformed.json || { echo "Error: jq transformation failed."; exit 1; }
+        if ! jq '.environment' environment.json > environment_transformed.json; then
+          echo "Error: jq transformation failed. Ensure jq is installed and the environment file is valid."; 
+          exit 1; 
+        fi
+        echo "Environment file transformed successfully."
 
     - name: Debug - Show Environment Files
       run: |
@@ -52,10 +56,11 @@ jobs:
         cat environment_transformed.json
 
     - name: Install Postman CLI
-      run: npm install -g postman-cli
+      run: npm install -g postman  # Correct Postman CLI installation
 
     - name: Login to Postman CLI
-      run: postman login --with-api-key $POSTMAN_API_KEY
+      run: |
+        postman login --with-api-key $POSTMAN_API_KEY || { echo "Postman CLI login failed. Check API Key."; exit 1; }
 
     - name: Run API tests with Newman and generate HTMLExtra report (Negative Scenarios)
       run: |
@@ -63,14 +68,15 @@ jobs:
         npx newman run "${{ github.workspace }}/postman/collections/NASA_Negative_Tests.json" \
           -e environment_transformed.json \
           --reporters cli,htmlextra \
-          --reporter-htmlextra-export newman-report-negative.html
+          --reporter-htmlextra-export newman-report-negative.html || { echo "Newman Negative Test Run failed."; exit 1; }
 
     - name: Run API tests with Newman and generate HTMLExtra report (Positive Scenarios)
       run: |
+        echo "Running Positive API Tests..."
         npx newman run "${{ github.workspace }}/postman/collections/NASA_Positive_Tests.json" \
           -e environment_transformed.json \
           --reporters cli,htmlextra \
-          --reporter-htmlextra-export newman-report-positive.html
+          --reporter-htmlextra-export newman-report-positive.html || { echo "Newman Positive Test Run failed."; exit 1; }
 
     - name: Upload Negative HTML Report
       uses: actions/upload-artifact@v4
