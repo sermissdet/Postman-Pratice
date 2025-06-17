@@ -55,12 +55,12 @@ jobs:
         echo "Transformed environment_transformed.json content:"
         cat environment_transformed.json
 
-    - name: Install Postman CLI
-      run: npm install -g postman  # Correct Postman CLI installation
+    - name: Install Postman API Client
+      run: npm install -g postman-api-client  # Correct installation for Postman CLI
 
     - name: Login to Postman CLI
       run: |
-        postman login --with-api-key $POSTMAN_API_KEY || { echo "Postman CLI login failed. Check API Key."; exit 1; }
+        postman-api-client login --api-key $POSTMAN_API_KEY || { echo "Postman CLI login failed. Check API Key."; exit 1; }
 
     - name: Run API tests with Newman and generate HTMLExtra report (Negative Scenarios)
       run: |
