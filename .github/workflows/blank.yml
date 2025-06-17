@@ -34,8 +34,8 @@ jobs:
 
     - name: Fetch Postman Environment
       run: |
-        echo "Attempting to fetch environment with ID: df967d1f-7ccb-47c4-94b4-f03eb8f599dd"
-        curl -X GET "https://api.getpostman.com/environments/df967d1f-7ccb-47c4-94b4-f03eb8f599dd" \
+        echo "Attempting to fetch environment with ID: d7e1bfa4-5b18-44e6-982b-5834b6f78241"
+        curl -X GET "https://api.getpostman.com/environments/d7e1bfa4-5b18-44e6-982b-5834b6f78241" \
           -H "X-Api-Key: $POSTMAN_API_KEY" \
           -o environment.json || { echo "Error: Curl command failed."; exit 1; }
         echo "Environment file fetched to environment.json."
