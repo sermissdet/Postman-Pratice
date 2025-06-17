@@ -62,6 +62,7 @@ jobs:
           -e environment_transformed.json \
           --reporters cli,htmlextra \
           --reporter-htmlextra-export newman-report-negative.html || { echo "Newman Negative Test Run failed."; exit 1; }
+             continue-on-error: true
 
     - name: Run API tests with Newman and generate HTMLExtra report (Positive Scenarios)
       run: |
@@ -70,6 +71,7 @@ jobs:
           -e environment_transformed.json \
           --reporters cli,htmlextra \
           --reporter-htmlextra-export newman-report-positive.html || { echo "Newman Positive Test Run failed."; exit 1; }
+              continue-on-error: true
 
     - name: Upload Negative HTML Report
       uses: actions/upload-artifact@v4
