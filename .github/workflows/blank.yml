@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  POSTMAN_API_KEY: ${{ secrets.NASA_API_KEY }}
+  POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
 
 jobs:
   build:
